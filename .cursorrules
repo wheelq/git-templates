@@ -21,3 +21,4 @@
 - Create branches manually if not using the script: `git checkout -b feature/123-description`
 - Only merge branches via Pull Requests
 
+
