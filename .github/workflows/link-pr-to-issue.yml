@@ -1,0 +1,59 @@
+# GitHub Actions Workflow: Link PRs to Issues
+#
+# This workflow automatically links Pull Requests to related issues when:
+# - PR title or description mentions an issue number (e.g., #123)
+# - PR is opened or updated
+#
+# SETUP INSTRUCTIONS:
+# 1. Uncomment this workflow or copy it to your repository
+# 2. Ensure GitHub Actions are enabled in repository settings
+# 3. The workflow will run automatically on PR events
+#
+# CUSTOMIZATION:
+# - Adjust the issue/PR keywords if needed
+# - Add notifications or status updates
+# - Integrate with project management tools
+
+name: Link PR to Issue
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  link-pr-to-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Link PR to Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body || '';
+            const prTitle = context.payload.pull_request.title || '';
+            const prNumber = context.payload.pull_request.number;
+
+            // Match issue references in format #123, fixes #123, closes #123, etc.
+            const issueRegex = /(?:fixes?|closes?|resolves?|refs?)\s+#(\d+)/gi;
+            const matches = [...prBody.matchAll(issueRegex), ...prTitle.matchAll(issueRegex)];
+
+            const issueNumbers = [...new Set(matches.map(m => parseInt(m[1])))];
+
+            for (const issueNumber of issueNumbers) {
+              try {
+                // Add a comment to the issue linking the PR
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `🔗 Linked by PR #${prNumber}: ${context.payload.pull_request.html_url}`
+                });
+
+                console.log(`Linked PR #${prNumber} to issue #${issueNumber}`);
+              } catch (error) {
+                console.log(`Could not link to issue #${issueNumber}: ${error.message}`);
+              }
+            }
+
