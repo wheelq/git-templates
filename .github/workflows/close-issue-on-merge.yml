@@ -1,0 +1,86 @@
+# GitHub Actions Workflow: Close Issues on PR Merge
+#
+# This workflow automatically closes issues when a PR is merged if the PR
+# description contains keywords like "Closes #123", "Fixes #123", etc.
+#
+# SETUP INSTRUCTIONS:
+# 1. Uncomment this workflow or copy it to your repository
+# 2. Ensure GitHub Actions are enabled in repository settings
+# 3. The workflow will run automatically when PRs are merged
+#
+# NOTE: GitHub already has built-in support for closing issues via keywords
+# in PR descriptions. This workflow adds additional functionality like:
+# - Custom notifications
+# - Status updates
+# - Integration with other tools
+#
+# If you only need basic issue closing, GitHub's built-in feature is sufficient.
+# Just use keywords like "Closes #123" or "Fixes #123" in your PR description.
+
+name: Close Issue on Merge
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-issue:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Process Issue References
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body || '';
+            const prTitle = context.payload.pull_request.title || '';
+            const prNumber = context.payload.pull_request.number;
+
+            // Match issue references in format #123, fixes #123, closes #123, etc.
+            const issueRegex = /(?:fixes?|closes?|resolves?)\s+#(\d+)/gi;
+            const matches = [...prBody.matchAll(issueRegex), ...prTitle.matchAll(issueRegex)];
+
+            const issueNumbers = [...new Set(matches.map(m => parseInt(m[1])))];
+
+            for (const issueNumber of issueNumbers) {
+              try {
+                // Check if issue is already closed
+                const issue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+
+                if (issue.data.state === 'open') {
+                  // Add a comment before closing
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    body: `✅ This issue has been resolved by PR #${prNumber} and will be closed automatically.\n\nPR: ${context.payload.pull_request.html_url}`
+                  });
+
+                  // Close the issue
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    state: 'closed'
+                  });
+
+                  console.log(`Closed issue #${issueNumber} via PR #${prNumber}`);
+                } else {
+                  console.log(`Issue #${issueNumber} is already closed`);
+                }
+              } catch (error) {
+                console.log(`Could not process issue #${issueNumber}: ${error.message}`);
+              }
+            }
+
+            // NOTE: GitHub's built-in feature will also close issues automatically
+            // when PRs are merged with keywords like "Closes #123" in the description.
+            // This workflow provides additional control and logging.
+

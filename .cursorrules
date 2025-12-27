@@ -1,0 +1,23 @@
+## Issue-Driven Development
+
+### Working with GitHub Issues
+
+- **Reference issues in commits**: `git commit -m "feat: add feature (#123)"`
+- **Link PRs to issues**: Include `Closes #123` or `Fixes #123` in PR description
+- **Ask about issues**: "What are the requirements for issue #123?"
+- **Create branches from issues**: Use `scripts/create-issue-branch.sh <issue-number>`
+
+### Branch Naming from Issues
+
+- Format: `feature/<issue-number>-<short-description>` or `fix/<issue-number>-<short-description>`
+- Example: `feature/123-add-config-validation`
+
+### Branch-Based Workflow (CRITICAL)
+
+- **ALWAYS create a branch before making commits**
+- **NEVER commit directly to main/master branches**
+- All work must be done on feature/fix branches
+- Use `scripts/create-issue-branch.sh <issue-number>` to create branches from issues
+- Create branches manually if not using the script: `git checkout -b feature/123-description`
+- Only merge branches via Pull Requests
+
